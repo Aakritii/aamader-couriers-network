@@ -21,6 +21,7 @@ const TRACK_FILE = "data/tracking.json";
 const ADMIN_MOBILE = process.env.ADMIN_MOBILE;
 //const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const TWILIO_NUMBER = process.env.TWILIO_PHONE_NUMBER;
+const MESSAGING_SERVICE_SID = process.env.MESSAGING_SERVICE_SID;
 
 // Multer for image uploads
 const storage = multer.diskStorage({
@@ -61,7 +62,7 @@ app.post("/admin/verify-otp", (req, res) => {
 //   client.messages
 //     .create({
 //       body: `Your admin OTP is ${otp}`,
-//       messagingServiceSid: "MG25187fcba5d4ef51ec6fc25c87468a4b",
+//       messagingServiceSid: `${MESSAGING_SERVICE_SID}`,
 //       to: `+91${ADMIN_MOBILE}`
 //     })
 //     .then(message => {
