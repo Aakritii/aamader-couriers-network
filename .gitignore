@@ -1,4 +1,14 @@
+#macOS system files
+.DS_Store
+
+#Node modules
 node_modules/
+
+#Env files
 .env
+.env.local
+.env.*.local
+
+#Uploaded images / local data
 data/
 public/uploads/
