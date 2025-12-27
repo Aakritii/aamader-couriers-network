@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <div class="container">
   <h1>Aamader Couriers Network</h1>
 
@@ -13,10 +14,11 @@
   <div class="section">
     <h2>Track Your Parcel</h2>
     <div class="form-group">
-      <input id="t" placeholder="Enter Tracking Number">
+      <input id="trackingNumber" placeholder="Enter Tracking Number">
       <button onclick="track()">Track</button>
     </div>
-    <div id="result"></div>
+    <div id="trackStatus"></div>
+    <img id="trackImage" style="max-width:200px; display:none;">
   </div>
 
   <!-- Admin Section -->
@@ -32,9 +34,11 @@
 
     <div id="panel" style="display:none;">
       <h3>Add / Update Tracking</h3>
+
       <div class="form-group">
         <input id="tracking" placeholder="Tracking Number">
       </div>
+
       <div class="form-group">
         <select id="status">
           <option value="" disabled selected>Select Status</option>
@@ -44,9 +48,11 @@
           <option>Delivered</option>
         </select>
       </div>
+
       <div class="form-group">
         <input type="file" id="image">
       </div>
+
       <button onclick="save()">Save</button>
     </div>
   </div>
@@ -55,49 +61,57 @@
 <script>
 let token = "";
 
+/* ================= OTP ================= */
+
 function requestOTP() {
-  fetch("/admin/request-otp", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mobile: "" }) // server knows admin mobile
-  })
-  .then(r => r.json())
-  .then(d => alert(d.message))
-  .catch(err => alert("Error sending OTP"));
+  fetch("/admin/request-otp", { method: "POST" })
+    .then(r => r.json())
+    .then(d => alert(d.message))
+    .catch(() => alert("Error sending OTP"));
 }
 
 function verifyOTP() {
-  const otpEl = document.getElementById("otp");
+  const otpValue = document.getElementById("otp").value;
 
   fetch("/admin/verify-otp", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ otp: otpEl.value })
+    body: JSON.stringify({ otp: otpValue })
   })
   .then(r => r.json())
   .then(d => {
-    if (d.token) {
+    if(d.token){
       token = d.token;
+      alert("OTP Verified!");
       document.getElementById("panel").style.display = "block";
-      alert("Logged in as Admin");
     } else {
       alert(d.error || "Invalid OTP");
     }
-  });
+  })
+  .catch(() => alert("Verification failed"));
 }
+
+/* ================= SAVE ================= */
 
 function save() {
   const trackingEl = document.getElementById("tracking");
   const statusEl = document.getElementById("status");
-  if (!statusEl.value) {
-    alert("Please select a valid status");
+  const imageEl = document.getElementById("image");
+
+  if (!trackingEl.value) {
+    alert("Enter tracking number");
     return;
   }
-  const imageEl = document.getElementById("image");
+
+  if (!statusEl.value) {
+    alert("Select status");
+    return;
+  }
 
   const fd = new FormData();
   fd.append("trackingNumber", trackingEl.value);
   fd.append("status", statusEl.value);
+
   if (statusEl.value === "Delivered" && imageEl.files[0]) {
     fd.append("image", imageEl.files[0]);
   }
@@ -107,21 +121,42 @@ function save() {
     headers: { "Authorization": "Bearer " + token }, 
     body: fd 
   })
-  .then(() => alert("Saved!"));
+  .then(() => alert("Saved!"))
+  .catch(() => alert("Save failed"));
 }
 
-function track() {
-  const tEl = document.getElementById("t");
-  const resultEl = document.getElementById("result");
+/* ================= TRACK ================= */
 
-  fetch("/track/" + tEl.value)
-    .then(r => r.json())
-    .then(d => {
-      if (!d) return resultEl.innerHTML = "<p>No data found</p>";
-      resultEl.innerHTML = `<p>Status: ${d.status}</p>`;
-      if (d.image) resultEl.innerHTML += `<img src="${d.image}" width="300">`;
-    });
+async function track() {
+  const trackingNumber = document.getElementById("trackingNumber").value;
+
+  if (!trackingNumber) {
+    alert("Enter tracking number");
+    return;
+  }
+
+  try {
+    const res = await fetch(`/track?trackingNumber=${trackingNumber}`);
+    const data = await res.json();
+
+    if (data.error) {
+      alert(data.error);
+      return;
+  }
+
+  document.getElementById("trackStatus").innerText =
+      `Status: ${data.status}`;
+
+    if (data.image) {
+      const img = document.getElementById("trackImage");
+      img.src = data.image;
+      img.style.display = "block";
+    }
+  } catch {
+    alert("Tracking failed");
+  }
 }
 </script>
+
 </body>
 </html>
