@@ -1,11 +1,9 @@
 import express from "express";
-import multer from "multer";
 import cloudinary from "../config/cloudinary.js";
-import multerCloudinaryStorage from "multer-storage-cloudinary";
-import Twilio from "twilio";
 import upload from "../middleware/upload.js";
-import Tracking from "../models/tr_schema.js"; // single consolidated model
-import 'dotenv/config'; // load env variables
+import Tracking from "../models/tr_schema.js";
+import Twilio from "twilio";
+import 'dotenv/config';
 
 const router = express.Router();
 
@@ -18,17 +16,16 @@ const twilioClient = new Twilio(
 // Simple in-memory OTP store
 let adminOtp = "";
 
+
 // ----------------- ROUTES -----------------
 
 // 1️⃣ Request OTP
 router.post("/request-otp", async (req, res) => {
   try {
-    // generate 6-digit OTP
     adminOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // send OTP via Twilio using MessagingServiceSid
-    const message = await twilioClient.messages.create({
-      to: `${process.env.ADMIN_MOBILE}`, // add +91 by default
+    await twilioClient.messages.create({
+      to: `${process.env.ADMIN_MOBILE}`,
       body: `Your OTP is: ${adminOtp}`,
       messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID
     });
@@ -45,7 +42,7 @@ router.post("/request-otp", async (req, res) => {
 router.post("/verify-otp", (req, res) => {
   const { otp } = req.body;
   if (otp === adminOtp) {
-    adminOtp = ""; // reset after verification
+    adminOtp = "";
     res.json({ token: "admin-access-granted" });
   } else {
     res.status(400).json({ error: "Invalid OTP" });
@@ -57,31 +54,48 @@ router.post("/verify-otp", (req, res) => {
 router.post("/add", upload.single("image"), async (req, res) => {
   try {
     const { trackingNumber, status } = req.body;
-    const image = req.file?.path || null;
 
-    // Find existing tracking entry
-    let track = await Tracking.findOne({ trackingNumber });
-
-    if (track) {
-      track.status = status;
-      if (image) track.image = image;
-      track.updatedAt = new Date(); // update timestamp
-      await track.save();
-    } else {
-      track = await Tracking.create({ 
-        trackingNumber, 
-        status, 
-        image,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
+    if (!trackingNumber || !status) {
+      return res.status(400).json({ error: "Tracking number and status are required" });
     }
 
-    res.json({ message: "Saved!" });
+    let imageUrl = null;
+
+    // Upload to Cloudinary if image is provided
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "tracking_images",
+      });
+      imageUrl = result.secure_url;
+    }
+
+    // Fetch existing tracking record
+    const existingTrack = await Tracking.findOne({ trackingNumber: trackingNumber.trim() });
+
+    if (existingTrack && existingTrack.status.toLowerCase() === "delivered") {
+      return res.status(400).json({ error: "Cannot change status after it is Delivered" });
+    }
+    
+    // Use upsert: true to automatically create if not exists
+    const track = await Tracking.findOneAndUpdate(
+      { trackingNumber: trackingNumber.trim() },
+      {
+        status,
+        image: imageUrl,
+        updatedAt: new Date(),
+        $setOnInsert: { createdAt: new Date() } // only set when creating
+      },
+      { new: true, upsert: true }
+    );
+
+    console.log("Saved tracking:", track);
+    res.json({ message: "Tracking saved!", tracking: track });
   } catch (err) {
-    console.error(err);
+    console.error("Error saving tracking:", err);
     res.status(500).json({ error: "Failed to save tracking" });
   }
 });
 
 export default router;
+
+
