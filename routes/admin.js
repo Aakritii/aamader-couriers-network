@@ -3,6 +3,7 @@ import cloudinary from "../config/cloudinary.js";
 import upload from "../middleware/upload.js";
 import Tracking from "../models/tr_schema.js";
 import 'dotenv/config';
+import streamifier from "streamifier";
 
 const router = express.Router();
 
@@ -41,33 +42,43 @@ router.post("/add", upload.single("image"), async (req, res) => {
 
     let imageUrl = null;
 
-    // Upload to Cloudinary if image is provided
+    // Upload image to Cloudinary if file is provided
     if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "tracking_images",
+      imageUrl = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "tracking_images" },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result.secure_url);
+          }
+        );
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
       });
-      imageUrl = result.secure_url;
     }
 
     // Fetch existing tracking record
-    const existingTrack = await Tracking.findOne({ trackingNumber: trackingNumber.trim() });
+    const existingTrack = await Tracking.findOne({
+      trackingNumber: trackingNumber.trim(),
+    });
 
     if (existingTrack && existingTrack.status.toLowerCase() === "delivered") {
-      return res.status(400).json({ error: "Cannot change status after it is Delivered" });
+      return res
+        .status(400)
+        .json({ error: "Cannot change status after it is Delivered" });
     }
     
-    // Use upsert: true to automatically create if not exists
+    // Upsert tracking record
     const track = await Tracking.findOneAndUpdate(
       { trackingNumber: trackingNumber.trim() },
       {
         status,
         image: imageUrl,
         updatedAt: new Date(),
-        $setOnInsert: { createdAt: new Date() } // only set when creating
+        $setOnInsert: { createdAt: new Date() },
       },
       { new: true, upsert: true }
     );
-
+    
     console.log("Saved tracking:", track);
     res.json({ message: "Tracking saved!", tracking: track });
   } catch (err) {
@@ -75,6 +86,7 @@ router.post("/add", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Failed to save tracking" });
   }
 });
+
 
 export default router;
 
