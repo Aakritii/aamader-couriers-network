@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Aamader Couriers Network</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -10,30 +11,40 @@
 <div class="container">
   <h1>Aamader Couriers Network</h1>
 
-  <!-- User Section -->
-  <div class="section">
+  <!-- ================= USER TRACK ================= -->
+  <div class="section" id="userSection">
     <h2>Track Your Parcel</h2>
     <div class="form-group">
       <input id="trackingNumber" placeholder="Enter Tracking Number">
-      <button onclick="track()">Track</button>
     </div>
+    <button onclick="track()">Track</button>
+
     <div id="trackStatus"></div>
     <img id="trackImage" style="max-width:200px; display:none;">
   </div>
 
-  <!-- Admin Section -->
+  <!-- ================= ADMIN ================= -->
   <div class="section">
     <h2>Admin Panel</h2>
-    <div class="form-group">
-      <button onclick="requestOTP()">Send OTP</button>
-    </div>
-    <div class="form-group">
-      <input id="otp" placeholder="Enter OTP">
-      <button onclick="verifyOTP()">Verify OTP</button>
+
+    <!-- LOGIN -->
+    <div id="loginBox">
+      <div class="form-group">
+        <input id="adminUsername" placeholder="Username">
+      </div>
+
+      <div class="form-group">
+        <input id="adminPassword" type="password" placeholder="Password">
+      </div>
+
+      <button onclick="login()">Login</button>
     </div>
 
-    <div id="panel" style="display:none;">
-      <h3>Add / Update Tracking</h3>
+    <!-- ADMIN PANEL -->
+    <div id="panel" class="hidden">
+      <button onclick="logout()">Logout</button>
+
+      <h3>Add / Update ACN Tracking</h3>
 
       <div class="form-group">
         <input id="tracking" placeholder="Tracking Number">
@@ -59,39 +70,59 @@
 </div>
 
 <script>
-let token = "";
 
-/* ================= OTP ================= */
+/* ================= JWT ================= */
 
-function requestOTP() {
-  fetch("/admin/request-otp", { method: "POST" })
-    .then(r => r.json())
-    .then(d => alert(d.message))
-    .catch(() => alert("Error sending OTP"));
-}
+let token = localStorage.getItem("jwt");
 
-function verifyOTP() {
-  const otpValue = document.getElementById("otp").value;
+if (token) showLoggedInUI();
 
-  fetch("/admin/verify-otp", {
+/* ================= LOGIN ================= */
+
+function login() {
+  const username = adminUsername.value;
+  const password = adminPassword.value;
+
+  console.log("Sending login:", username, password);
+
+  fetch("/admin/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ otp: otpValue })
+    body: JSON.stringify({ username, password })
   })
-  .then(r => r.json())
+  .then(r => {
+    console.log("Response status:", r.status);
+    return r.json();
+  })
   .then(d => {
-    if(d.token){
+    console.log("Response data:", d);
+    if (d.token) {
+      localStorage.setItem("jwt", d.token);
       token = d.token;
-      alert("OTP Verified!");
-      document.getElementById("panel").style.display = "block";
+      alert("Login successful");          // ✅ ADD
+      showLoggedInUI();
     } else {
-      alert(d.error || "Invalid OTP");
+      alert(d.error || "Login failed");
     }
   })
-  .catch(() => alert("Verification failed"));
+  .catch(err => {
+    console.error("Fetch error:", err);
+    alert("Backend not reachable");
+  });
 }
 
-/* ================= SAVE ================= */
+function logout() {
+  localStorage.removeItem("jwt");
+  location.reload();
+}
+
+function showLoggedInUI() {
+  loginBox.classList.add("hidden");
+  panel.classList.remove("hidden");
+  userSection.classList.remove("hidden");
+}
+
+/* ================= SAVE (ACN) ================= */
 
 function save() {
   const trackingEl = document.getElementById("tracking");
@@ -125,38 +156,41 @@ function save() {
   .catch(() => alert("Save failed"));
 }
 
+
 /* ================= TRACK ================= */
 
 async function track() {
-  const trackingNumber = document.getElementById("trackingNumber").value;
+  const trackingNo = trackingNumber.value;
 
-  if (!trackingNumber) {
+  if (!trackingNo) {
     alert("Enter tracking number");
     return;
   }
 
   try {
-    const res = await fetch(`/track?trackingNumber=${trackingNumber}`);
+    const res = await fetch(`/track?trackingNumber=${trackingNo}`);
     const data = await res.json();
 
     if (data.error) {
       alert(data.error);
       return;
-  }
+    }
 
-  document.getElementById("trackStatus").innerText =
-      `Status: ${data.status}`;
+    trackStatus.innerText = "Status: " + data.status;
 
     if (data.image) {
-      const img = document.getElementById("trackImage");
-      img.src = data.image;
-      img.style.display = "block";
+      trackImage.src = data.image;
+      trackImage.style.display = "block";
+    } else {
+      trackImage.style.display = "none";
     }
   } catch {
     alert("Tracking failed");
   }
 }
-</script>
+
+
+  </script>
 
 </body>
 </html>

@@ -2,50 +2,30 @@ import express from "express";
 import cloudinary from "../config/cloudinary.js";
 import upload from "../middleware/upload.js";
 import Tracking from "../models/tr_schema.js";
-import Twilio from "twilio";
 import 'dotenv/config';
 
 const router = express.Router();
 
-// ----------------- TWILIO CONFIG -----------------
-const twilioClient = new Twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
-// Simple in-memory OTP store
-let adminOtp = "";
-
 
 // ----------------- ROUTES -----------------
 
-// 1️⃣ Request OTP
-router.post("/request-otp", async (req, res) => {
-  try {
-    adminOtp = Math.floor(100000 + Math.random() * 900000).toString();
+// 1️⃣ Admin Login (Username + Password)
+router.post("/login", (req, res) => {
+  const { username, password } = req.body;
 
-    await twilioClient.messages.create({
-      to: `${process.env.ADMIN_MOBILE}`,
-      body: `Your OTP is: ${adminOtp}`,
-      messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID
+  // Verify credentials
+  if (
+    username === process.env.ADMIN_USERNAME &&
+    password === process.env.ADMIN_PASSWORD
+  ) {
+    res.json({
+      message: "Login successful",
+      token: "admin-access-granted"
     });
-
-    console.log("Sent OTP:", adminOtp);
-    res.json({ message: "OTP sent successfully" });
-  } catch (err) {
-    console.error("Error sending OTP:", err.message);
-    res.status(500).json({ error: "Error sending OTP" });
-  }
-});
-
-// 2️⃣ Verify OTP
-router.post("/verify-otp", (req, res) => {
-  const { otp } = req.body;
-  if (otp === adminOtp) {
-    adminOtp = "";
-    res.json({ token: "admin-access-granted" });
   } else {
-    res.status(400).json({ error: "Invalid OTP" });
+    res.status(401).json({
+      error: "Invalid username or password"
+    });
   }
 });
 

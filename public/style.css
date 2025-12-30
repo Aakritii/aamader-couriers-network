@@ -8,4 +8,7 @@ input, select { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc;
 button { padding: 10px 15px; background: #ffd814; border: 1px solid #fcd200; cursor: pointer; border-radius: 4px; font-weight: bold; }
 button:hover { background: #f7ca00; }
 img { margin-top: 10px; border: 1px solid #ccc; border-radius: 4px; }
+.hidden {
+  display: none;
+}
 
