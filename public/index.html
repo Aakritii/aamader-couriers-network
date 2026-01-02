@@ -6,108 +6,123 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<div class="container">
-  <h1>Aamader Couriers Network</h1>
+<!-- ================= TABS ================= -->
+<div class="tabs">
+  <button id="trackTab" class="active" onclick="showTab('track')">Track Parcel</button>
+  <button id="adminTab" onclick="showTab('admin')">Admin Panel</button>
+</div>
 
-  <!-- ================= USER TRACK ================= -->
-  <div class="section" id="userSection">
-    <h2>Track Your Parcel</h2>
-    <div class="form-group">
+<!-- ================= TRACK PAGE ================= -->
+<div id="trackPage" class="track-container">
+  <div class="track-box">
+    <h1>Aamader Couriers Network</h1>
+
+    <div class="track-input">
       <input id="trackingNumber" placeholder="Enter Tracking Number">
+      <button onclick="track()">Track</button>
     </div>
-    <button onclick="track()">Track</button>
 
     <div id="trackStatus"></div>
-    <img id="trackImage" style="max-width:200px; display:none;">
+    <img id="trackImage" style="display:none;">
+  </div>
+</div>
+
+<!-- ================= ADMIN PAGE ================= -->
+<div id="adminPage" class="hidden">
+
+  <!-- LOGIN -->
+  <div id="loginBox" class="admin-login">
+    <h2>Admin Login</h2>
+    <input id="adminUsername" placeholder="Username">
+    <input id="adminPassword" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
   </div>
 
-  <!-- ================= ADMIN ================= -->
-  <div class="section">
-    <h2>Admin Panel</h2>
+  <!-- DASHBOARD -->
+  <div id="panel" class="hidden admin-dashboard">
 
-    <!-- LOGIN -->
-    <div id="loginBox">
-      <div class="form-group">
-        <input id="adminUsername" placeholder="Username">
-      </div>
-
-      <div class="form-group">
-        <input id="adminPassword" type="password" placeholder="Password">
-      </div>
-
-      <button onclick="login()">Login</button>
+    <div class="admin-header">
+      <h2>Admin Dashboard</h2>
+      <button onclick="logout()">Logout</button>
     </div>
 
-    <!-- ADMIN PANEL -->
-    <div id="panel" class="hidden">
-      <button onclick="logout()">Logout</button>
+    <!-- ADD / UPDATE -->
+    <div class="admin-add">
+      <h3>➕ Add / Update Tracking</h3>
 
-      <h3>Add / Update ACN Tracking</h3>
+      <input id="tracking" placeholder="Tracking Number">
 
-      <div class="form-group">
-        <input id="tracking" placeholder="Tracking Number">
-      </div>
+      <select id="status">
+        <option value="" disabled selected>Select Status</option>
+        <option>Booked</option>
+        <option>In Transit</option>
+        <option>Returned</option>
+        <option>Delivered</option>
+      </select>
 
-      <div class="form-group">
-        <select id="status">
-          <option value="" disabled selected>Select Status</option>
-          <option>Booked</option>
-          <option>In Transit</option>
-          <option>Returned</option>
-          <option>Delivered</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <input type="file" id="image">
-      </div>
-
+      <input type="file" id="image">
       <button onclick="save()">Save</button>
     </div>
+
+    <!-- RECORDS TABLE -->
+    <div class="admin-table">
+      <h3>📦 All Records</h3>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Tracking No</th>
+            <th>Current Status</th>
+            <th>Update Status</th>
+            <th>Upload Receiving</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="recordsTable"></tbody>
+      </table>
+    </div>
+
   </div>
 </div>
 
 <script>
+/* ================= TAB SWITCH ================= */
+function showTab(tab) {
+  document.getElementById("trackPage").classList.toggle("hidden", tab !== "track");
+  document.getElementById("adminPage").classList.toggle("hidden", tab !== "admin");
+
+  document.getElementById("trackTab").classList.toggle("active", tab === "track");
+  document.getElementById("adminTab").classList.toggle("active", tab === "admin");
+}
 
 /* ================= JWT ================= */
-
 let token = localStorage.getItem("jwt");
-
-if (token) showLoggedInUI();
+if (token) {
+  showTab("admin");
+  showLoggedInUI();
+}
 
 /* ================= LOGIN ================= */
-
 function login() {
-  const username = adminUsername.value;
-  const password = adminPassword.value;
-
-  console.log("Sending login:", username, password);
-
   fetch("/admin/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({
+      username: adminUsername.value,
+      password: adminPassword.value
+    })
   })
-  .then(r => {
-    console.log("Response status:", r.status);
-    return r.json();
-  })
+  .then(r => r.json())
   .then(d => {
-    console.log("Response data:", d);
     if (d.token) {
       localStorage.setItem("jwt", d.token);
       token = d.token;
-      alert("Login successful");          // ✅ ADD
       showLoggedInUI();
-    } else {
-      alert(d.error || "Login failed");
-    }
-  })
-  .catch(err => {
-    console.error("Fetch error:", err);
-    alert("Backend not reachable");
+      showTab("admin");
+    } else alert("Login failed");
   });
 }
 
@@ -119,78 +134,116 @@ function logout() {
 function showLoggedInUI() {
   loginBox.classList.add("hidden");
   panel.classList.remove("hidden");
-  userSection.classList.remove("hidden");
+  loadRecords();
 }
 
-/* ================= SAVE (ACN) ================= */
+/* ================= SAVE ================= */
+function save(trackingFromTable = null) {
+  let trackingNo, statusVal, imageFile;
 
-function save() {
-  const trackingEl = document.getElementById("tracking");
-  const statusEl = document.getElementById("status");
-  const imageEl = document.getElementById("image");
-
-  if (!trackingEl.value) {
-    alert("Enter tracking number");
-    return;
+  // ▶️ Called from table
+  if (trackingFromTable) {
+    trackingNo = trackingFromTable;
+    statusVal = document.getElementById(`s_${trackingFromTable}`).value;
+    imageFile = document.getElementById(`f_${trackingFromTable}`).files[0];
   }
+  // ▶️ Called from top Add/Update section
+  else {
+    trackingNo = document.getElementById("tracking").value.trim();
+    statusVal = document.getElementById("status").value;
+    imageFile = document.getElementById("image").files[0];
 
-  if (!statusEl.value) {
-    alert("Select status");
-    return;
+    if (!trackingNo || !statusVal) {
+      alert("Tracking number & status are mandatory");
+      return;
+    }
   }
 
   const fd = new FormData();
-  fd.append("trackingNumber", trackingEl.value);
-  fd.append("status", statusEl.value);
+  fd.append("trackingNumber", trackingNo);
+  fd.append("status", statusVal);
 
-  if (statusEl.value === "Delivered" && imageEl.files[0]) {
-    fd.append("image", imageEl.files[0]);
+  if (imageFile) {
+    fd.append("image", imageFile);
   }
 
-  fetch("/admin/add", { 
-    method: "POST", 
-    headers: { "Authorization": "Bearer " + token }, 
-    body: fd 
+  fetch("/admin/add", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token
+    },
+    body: fd
   })
-  .then(() => alert("Saved!"))
+  .then(res => res.json())
+  .then(() => {
+    alert("Saved successfully");
+    loadRecords();
+  })
   .catch(() => alert("Save failed"));
 }
 
 
+
+/* ================= LOAD ALL RECORDS ================= */
+function loadRecords() {
+  fetch("/admin/all", {
+    headers: { Authorization: "Bearer " + token }
+  })
+  .then(res => res.json())
+  .then(data => {
+    const table = document.getElementById("recordsTable");
+    table.innerHTML = "";
+
+    data.forEach(item => {
+      table.innerHTML += `
+        <tr>
+          <td>${item.trackingNumber}</td>
+          <td>${item.status}</td>
+          <td>
+            <select id="s_${item.trackingNumber}">
+              <option ${item.status==="Booked"?"selected":""}>Booked</option>
+              <option ${item.status==="In Transit"?"selected":""}>In Transit</option>
+              <option ${item.status==="Returned"?"selected":""}>Returned</option>
+              <option ${item.status==="Delivered"?"selected":""}>Delivered</option>
+            </select>
+          </td>
+          <td>
+            <input type="file" id="f_${item.trackingNumber}" />
+          </td>
+          <td>
+            <button onclick="save('${item.trackingNumber}')">
+              Save
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+    // ⬇ AUTO SCROLL TO TABLE
+  document.querySelector(".admin-table")
+    .scrollIntoView({ behavior: "smooth" });
+  })
+  .catch(() => alert("Failed to load records"));
+}
+
+
 /* ================= TRACK ================= */
-
 async function track() {
-  const trackingNo = trackingNumber.value;
-
-  if (!trackingNo) {
+  if (!trackingNumber.value) {
     alert("Enter tracking number");
     return;
   }
 
-  try {
-    const res = await fetch(`/track?trackingNumber=${trackingNo}`);
-    const data = await res.json();
+  const res = await fetch(`/track?trackingNumber=${trackingNumber.value}`);
+  const data = await res.json();
 
-    if (data.error) {
-      alert(data.error);
-      return;
-    }
+  trackStatus.innerText = data.error ? data.error : "Status: " + data.status;
 
-    trackStatus.innerText = "Status: " + data.status;
-
-    if (data.image) {
-      trackImage.src = data.image;
-      trackImage.style.display = "block";
-    } else {
-      trackImage.style.display = "none";
-    }
-  } catch {
-    alert("Tracking failed");
-  }
+  if (data.image) {
+    trackImage.src = data.image;
+    trackImage.style.display = "block";
+  } else trackImage.style.display = "none";
 }
-
-
-  </script>
+</script>
 
 </body>
 </html>

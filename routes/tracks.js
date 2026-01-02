@@ -14,7 +14,12 @@ router.get("/", async (req, res) => {
     }
 
     // Trim to avoid mismatch due to spaces
-    const track = await Tracking.findOne({ trackingNumber: trackingNumber.trim() });
+    const track = await Tracking.findOne({
+      trackingNumber: {
+        $regex: `^${trackingNumber.trim()}$`,
+        $options: "i"   // 👈 case-insensitive
+      }
+    });
 
     if (!track) {
       return res.status(404).json({ error: "Tracking not found" });

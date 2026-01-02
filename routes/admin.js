@@ -87,6 +87,15 @@ router.post("/add", upload.single("image"), async (req, res) => {
   }
 });
 
+/* ================= GET ALL RECORDS ================= */
+router.get("/all", async (req, res) => {
+  try {
+    const records = await Tracking.find().sort({ createdAt: -1 });
+    res.json(records); // ✅ ARRAY ONLY
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch records" });
+  }
+});
 
 export default router;
 
