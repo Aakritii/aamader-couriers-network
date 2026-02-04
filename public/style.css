@@ -33,7 +33,7 @@ button { cursor: pointer; }
 .track-container {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   height: calc(100vh - 60px);
 }
 
@@ -215,5 +215,13 @@ tr:hover {
   table {
     font-size: 12px;
   }
+}
+
+#trackPage {
+  min-height: 100vh;
+}
+
+#adminPage {
+  padding-top: 20px;
 }
 
