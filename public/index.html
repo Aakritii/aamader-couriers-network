@@ -76,6 +76,8 @@
           <tr>
             <th>Tracking No</th>
             <th>Current Status</th>
+            <th>Booked On</th>
+            <th>Updated On</th>
             <th>Update Status</th>
             <th>Upload Receiving</th>
             <th>Action</th>
@@ -83,6 +85,7 @@
         </thead>
         <tbody id="recordsTable"></tbody>
       </table>
+      <div id="pagination" class="pagination"></div>
     </div>
 
   </div>
@@ -91,11 +94,23 @@
 <script>
 /* ================= TAB SWITCH ================= */
 function showTab(tab) {
-  document.getElementById("trackPage").classList.toggle("hidden", tab !== "track");
-  document.getElementById("adminPage").classList.toggle("hidden", tab !== "admin");
+  // Pages
+  trackPage.classList.add("hidden");
+  adminPage.classList.add("hidden");
 
-  document.getElementById("trackTab").classList.toggle("active", tab === "track");
-  document.getElementById("adminTab").classList.toggle("active", tab === "admin");
+  // Tabs
+  trackTab.classList.remove("active");
+  adminTab.classList.remove("active");
+
+  if (tab === "track") {
+    trackPage.classList.remove("hidden");
+    trackTab.classList.add("active");
+  }
+
+  if (tab === "admin") {
+    adminPage.classList.remove("hidden");
+    adminTab.classList.add("active");
+  }
 }
 
 /* ================= JWT ================= */
@@ -103,6 +118,8 @@ let token = localStorage.getItem("jwt");
 if (token) {
   showTab("admin");
   showLoggedInUI();
+} else {
+  showTab("track");
 }
 
 /* ================= LOGIN ================= */
@@ -128,6 +145,8 @@ function login() {
 
 function logout() {
   localStorage.removeItem("jwt");
+  document.getElementById("trackTab").style.display = "block";
+  document.getElementById("trackPage").style.display = "block";
   location.reload();
 }
 
@@ -177,7 +196,7 @@ function save(trackingFromTable = null) {
   .then(res => res.json())
   .then(() => {
     alert("Saved successfully");
-    loadRecords();
+    loadRecords(1);
   })
   .catch(() => alert("Save failed"));
 }
@@ -185,12 +204,17 @@ function save(trackingFromTable = null) {
 
 
 /* ================= LOAD ALL RECORDS ================= */
-function loadRecords() {
-  fetch("/admin/all", {
+let currentPage = 1;
+const limit = 20;
+
+function loadRecords(page = 1) {
+  currentPage = page;
+  fetch(`/admin/all?page=${page}&limit=${limit}`, {
     headers: { Authorization: "Bearer " + token }
   })
   .then(res => res.json())
-  .then(data => {
+  .then(res => {
+    const { data, pagination } = res;
     const table = document.getElementById("recordsTable");
     table.innerHTML = "";
 
@@ -199,6 +223,8 @@ function loadRecords() {
         <tr>
           <td>${item.trackingNumber}</td>
           <td>${item.status}</td>
+           <td>${formatDate(item.createdAt)}</td>
+          <td>${formatDate(item.updatedAt)}</td>
           <td>
             <select id="s_${item.trackingNumber}">
               <option ${item.status==="Booked"?"selected":""}>Booked</option>
@@ -218,11 +244,37 @@ function loadRecords() {
         </tr>
       `;
     });
+    renderPagination(pagination);
     // ⬇ AUTO SCROLL TO TABLE
-  document.querySelector(".admin-table")
-    .scrollIntoView({ behavior: "smooth" });
+  // document.querySelector(".admin-table")
+  //   .scrollIntoView({ behavior: "smooth" });
   })
   .catch(() => alert("Failed to load records"));
+}
+
+function renderPagination(pagination) {
+  const pagDiv = document.getElementById("pagination");
+  pagDiv.innerHTML = "";
+
+  // Prev
+  const prevBtn = document.createElement("button");
+  prevBtn.innerText = "⬅ Prev";
+  prevBtn.disabled = pagination.currentPage === 1;
+  prevBtn.onclick = () => loadRecords(pagination.currentPage - 1);
+
+  // Next
+  const nextBtn = document.createElement("button");
+  nextBtn.innerText = "Next ➡";
+  nextBtn.disabled = pagination.currentPage === pagination.totalPages;
+  nextBtn.onclick = () => loadRecords(pagination.currentPage + 1);
+
+  // Page info
+  const info = document.createElement("span");
+  info.innerText = ` Page ${pagination.currentPage} of ${pagination.totalPages} `;
+
+  pagDiv.appendChild(prevBtn);
+  pagDiv.appendChild(info);
+  pagDiv.appendChild(nextBtn);
 }
 
 
@@ -242,6 +294,13 @@ async function track() {
     trackImage.src = data.image;
     trackImage.style.display = "block";
   } else trackImage.style.display = "none";
+}
+
+/* =======*/
+function formatDate(dateStr) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  return d.toLocaleString(); // shows date + time nicely
 }
 </script>
 

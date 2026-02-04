@@ -61,20 +61,18 @@ router.post("/add", upload.single("image"), async (req, res) => {
       trackingNumber: trackingNumber.trim(),
     });
 
-    if (existingTrack && existingTrack.status.toLowerCase() === "delivered") {
-      return res
-        .status(400)
-        .json({ error: "Cannot change status after it is Delivered" });
-    }
+    // if (existingTrack && existingTrack.status.toLowerCase() === "delivered") {
+    //   return res
+    //     .status(400)
+    //     .json({ error: "Cannot change status after it is Delivered" });
+    // }
     
     // Upsert tracking record
     const track = await Tracking.findOneAndUpdate(
       { trackingNumber: trackingNumber.trim() },
       {
         status,
-        image: imageUrl,
-        updatedAt: new Date(),
-        $setOnInsert: { createdAt: new Date() },
+        image: imageUrl
       },
       { new: true, upsert: true }
     );
@@ -88,11 +86,32 @@ router.post("/add", upload.single("image"), async (req, res) => {
 });
 
 /* ================= GET ALL RECORDS ================= */
+/* ================= GET ALL RECORDS (PAGINATED) ================= */
 router.get("/all", async (req, res) => {
   try {
-    const records = await Tracking.find().sort({ createdAt: -1 });
-    res.json(records); // ✅ ARRAY ONLY
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const [records, total] = await Promise.all([
+      Tracking.find()
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Tracking.countDocuments()
+    ]);
+
+    res.json({
+      data: records,
+      pagination: {
+        totalRecords: total,
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        limit
+      }
+    });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to fetch records" });
   }
 });
