@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Login | Aamader Courier Networks</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="topbar">
+  <div class="logo" onclick="location.href='index.html'">
+    Aamader Courier Networks
+  </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div class="login-page">
+  <div class="login-box">
+    <h2>Admin Login</h2>
+
+    <input id="username" placeholder="Username">
+    <input id="password" type="password" placeholder="Password">
+
+    <button onclick="login()">Login</button>
+    <div id="errorMsg"></div>
+  </div>
+</div>
+
+<script>
+async function login() {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const errorMsg = document.getElementById("errorMsg");
+
+  if (!username || !password) {
+    errorMsg.innerText = "Username and password required";
+    return;
+  }
+
+  try {
+    const res = await fetch("/admin/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.token) {
+      localStorage.setItem("jwt", data.token);
+      window.location.href = "admin.html"; // ✅ redirect
+    } else {
+      errorMsg.innerText = "Invalid credentials";
+    }
+
+  } catch (err) {
+    console.error(err);
+    errorMsg.innerText = "Login failed. Try again.";
+  }
+}
+</script>
+
+</body>
+</html>

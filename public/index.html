@@ -9,298 +9,85 @@
 
 <body>
 
-<!-- ================= TABS ================= -->
-<div class="tabs">
-  <button id="trackTab" class="active" onclick="showTab('track')">Track Parcel</button>
-  <button id="adminTab" onclick="showTab('admin')">Admin Panel</button>
+<!-- HEADER -->
+<div class="topbar">
+  <div class="logo" onclick="location.href='index.html'">
+    Aamader Courier Networks
+  </div>
+  <button class="login-btn" onclick="location.href='login.html'">
+    Login
+  </button>
 </div>
 
-<!-- ================= TRACK PAGE ================= -->
-<div id="trackPage" class="track-container">
-  <div class="track-box">
-    <h1>Aamader Couriers Network</h1>
+<!-- TRACK PAGE -->
+<div class="track-page">
+  <h2>Track Your Shipment</h2>
 
-    <div class="track-input">
-      <input id="trackingNumber" placeholder="Enter Tracking Number">
-      <button onclick="track()">Track</button>
-    </div>
-
-    <div id="trackStatus"></div>
-    <img id="trackImage" style="display:none;">
-  </div>
+  <input id="trackingNumber" class="track-field" placeholder="Tracking Number">
+  <br>
+  <button class="submit-btn" onclick="track()">Submit</button>
 </div>
 
-<!-- ================= ADMIN PAGE ================= -->
-<div id="adminPage" class="hidden">
-
-  <!-- LOGIN -->
-  <div id="loginBox" class="admin-login">
-    <h2>Admin Login</h2>
-    <input id="adminUsername" placeholder="Username">
-    <input id="adminPassword" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-  </div>
-
-  <!-- DASHBOARD -->
-  <div id="panel" class="hidden admin-dashboard">
-
-    <div class="admin-header">
-      <h2>Admin Dashboard</h2>
-      <button onclick="logout()">Logout</button>
-    </div>
-
-    <!-- ADD / UPDATE -->
-    <div class="admin-add">
-      <h3>➕ Add / Update Tracking</h3>
-
-      <input id="tracking" placeholder="Tracking Number">
-
-      <select id="status">
-        <option value="" disabled selected>Select Status</option>
-        <option>Booked</option>
-        <option>In Transit</option>
-        <option>Returned</option>
-        <option>Delivered</option>
-      </select>
-
-      <input type="file" id="image">
-      <button onclick="save()">Save</button>
-    </div>
-
-    <!-- RECORDS TABLE -->
-    <div class="admin-table">
-      <h3>📦 All Records</h3>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Tracking No</th>
-            <th>Current Status</th>
-            <th>Booked On</th>
-            <th>Updated On</th>
-            <th>Update Status</th>
-            <th>Upload Receiving</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="recordsTable"></tbody>
-      </table>
-      <div id="pagination" class="pagination"></div>
-    </div>
-
+<!-- ===== TRACK RESULT OVERLAY ===== -->
+<div id="trackOverlay" class="overlay hidden">
+  <div class="overlay-box">
+    <h3 id="trackStatus"></h3>
+    <p id="updatedAt" class="updated-at"></p>
+    <img id="trackImage">
+    <button class="close-btn" onclick="closeOverlay()">Close</button>
   </div>
 </div>
 
 <script>
-/* ================= TAB SWITCH ================= */
-function showTab(tab) {
-  // Pages
-  trackPage.classList.add("hidden");
-  adminPage.classList.add("hidden");
-
-  // Tabs
-  trackTab.classList.remove("active");
-  adminTab.classList.remove("active");
-
-  if (tab === "track") {
-    trackPage.classList.remove("hidden");
-    trackTab.classList.add("active");
-  }
-
-  if (tab === "admin") {
-    adminPage.classList.remove("hidden");
-    adminTab.classList.add("active");
-  }
-}
-
-/* ================= JWT ================= */
-let token = localStorage.getItem("jwt");
-if (token) {
-  showTab("admin");
-  showLoggedInUI();
-} else {
-  showTab("track");
-}
-
-/* ================= LOGIN ================= */
-function login() {
-  fetch("/admin/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: adminUsername.value,
-      password: adminPassword.value
-    })
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.token) {
-      localStorage.setItem("jwt", d.token);
-      token = d.token;
-      showLoggedInUI();
-      showTab("admin");
-    } else alert("Login failed");
-  });
-}
-
-function logout() {
-  localStorage.removeItem("jwt");
-  document.getElementById("trackTab").style.display = "block";
-  document.getElementById("trackPage").style.display = "block";
-  location.reload();
-}
-
-function showLoggedInUI() {
-  loginBox.classList.add("hidden");
-  panel.classList.remove("hidden");
-  loadRecords();
-}
-
-/* ================= SAVE ================= */
-function save(trackingFromTable = null) {
-  let trackingNo, statusVal, imageFile;
-
-  // ▶️ Called from table
-  if (trackingFromTable) {
-    trackingNo = trackingFromTable;
-    statusVal = document.getElementById(`s_${trackingFromTable}`).value;
-    imageFile = document.getElementById(`f_${trackingFromTable}`).files[0];
-  }
-  // ▶️ Called from top Add/Update section
-  else {
-    trackingNo = document.getElementById("tracking").value.trim();
-    statusVal = document.getElementById("status").value;
-    imageFile = document.getElementById("image").files[0];
-
-    if (!trackingNo || !statusVal) {
-      alert("Tracking number & status are mandatory");
-      return;
-    }
-  }
-
-  const fd = new FormData();
-  fd.append("trackingNumber", trackingNo);
-  fd.append("status", statusVal);
-
-  if (imageFile) {
-    fd.append("image", imageFile);
-  }
-
-  fetch("/admin/add", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + token
-    },
-    body: fd
-  })
-  .then(res => res.json())
-  .then(() => {
-    alert("Saved successfully");
-    loadRecords(1);
-  })
-  .catch(() => alert("Save failed"));
-}
-
-
-
-/* ================= LOAD ALL RECORDS ================= */
-let currentPage = 1;
-const limit = 20;
-
-function loadRecords(page = 1) {
-  currentPage = page;
-  fetch(`/admin/all?page=${page}&limit=${limit}`, {
-    headers: { Authorization: "Bearer " + token }
-  })
-  .then(res => res.json())
-  .then(res => {
-    const { data, pagination } = res;
-    const table = document.getElementById("recordsTable");
-    table.innerHTML = "";
-
-    data.forEach(item => {
-      table.innerHTML += `
-        <tr>
-          <td>${item.trackingNumber}</td>
-          <td>${item.status}</td>
-           <td>${formatDate(item.createdAt)}</td>
-          <td>${formatDate(item.updatedAt)}</td>
-          <td>
-            <select id="s_${item.trackingNumber}">
-              <option ${item.status==="Booked"?"selected":""}>Booked</option>
-              <option ${item.status==="In Transit"?"selected":""}>In Transit</option>
-              <option ${item.status==="Returned"?"selected":""}>Returned</option>
-              <option ${item.status==="Delivered"?"selected":""}>Delivered</option>
-            </select>
-          </td>
-          <td>
-            <input type="file" id="f_${item.trackingNumber}" />
-          </td>
-          <td>
-            <button onclick="save('${item.trackingNumber}')">
-              Save
-            </button>
-          </td>
-        </tr>
-      `;
-    });
-    renderPagination(pagination);
-    // ⬇ AUTO SCROLL TO TABLE
-  // document.querySelector(".admin-table")
-  //   .scrollIntoView({ behavior: "smooth" });
-  })
-  .catch(() => alert("Failed to load records"));
-}
-
-function renderPagination(pagination) {
-  const pagDiv = document.getElementById("pagination");
-  pagDiv.innerHTML = "";
-
-  // Prev
-  const prevBtn = document.createElement("button");
-  prevBtn.innerText = "⬅ Prev";
-  prevBtn.disabled = pagination.currentPage === 1;
-  prevBtn.onclick = () => loadRecords(pagination.currentPage - 1);
-
-  // Next
-  const nextBtn = document.createElement("button");
-  nextBtn.innerText = "Next ➡";
-  nextBtn.disabled = pagination.currentPage === pagination.totalPages;
-  nextBtn.onclick = () => loadRecords(pagination.currentPage + 1);
-
-  // Page info
-  const info = document.createElement("span");
-  info.innerText = ` Page ${pagination.currentPage} of ${pagination.totalPages} `;
-
-  pagDiv.appendChild(prevBtn);
-  pagDiv.appendChild(info);
-  pagDiv.appendChild(nextBtn);
-}
-
-
-/* ================= TRACK ================= */
 async function track() {
-  if (!trackingNumber.value) {
+  const tn = document.getElementById("trackingNumber").value.trim();
+  const overlay = document.getElementById("trackOverlay");
+  const statusEl = document.getElementById("trackStatus");
+  const updatedAtEl = document.getElementById("updatedAt");
+  const imageEl = document.getElementById("trackImage");
+
+  if (!tn) {
     alert("Enter tracking number");
     return;
   }
 
-  const res = await fetch(`/track?trackingNumber=${trackingNumber.value}`);
-  const data = await res.json();
+  try {
+    const res = await fetch(
+      `/track?trackingNumber=${encodeURIComponent(tn)}`
+    );
 
-  trackStatus.innerText = data.error ? data.error : "Status: " + data.status;
+    const data = await res.json();
 
-  if (data.image) {
-    trackImage.src = data.image;
-    trackImage.style.display = "block";
-  } else trackImage.style.display = "none";
+    if (data.error) {
+      statusEl.innerText = data.error;
+      imageEl.style.display = "none";
+    } else {
+      statusEl.innerText = "Status: " + data.status;
+
+      if (data.status === "Delivered" && data.updatedAt) {
+        updatedAtEl.innerText = "Delivered on: " + new Date(data.updatedAt).toLocaleDateString("en-GB");
+      } else {
+        updatedAtEl.innerText = "";
+      }
+
+      if (data.image) {
+        imageEl.src = data.image;
+        imageEl.style.display = "block";
+      } else {
+        imageEl.style.display = "none";
+      }
+    }
+
+    overlay.classList.remove("hidden");
+
+  } catch (err) {
+    alert("Tracking failed");
+    console.error(err);
+  }
 }
 
-/* =======*/
-function formatDate(dateStr) {
-  if (!dateStr) return "-";
-  const d = new Date(dateStr);
-  return d.toLocaleString(); // shows date + time nicely
+function closeOverlay() {
+  document.getElementById("trackOverlay").classList.add("hidden");
 }
 </script>
 
