@@ -9,59 +9,70 @@
 
 <body>
 
-<!-- HEADER -->
 <div class="topbar">
   <div class="logo" onclick="location.href='index.html'">
     Aamader Courier Networks
   </div>
+  <button class="login-btn" onclick="location.href='index.html'">
+    Tracking
+  </button>
 </div>
 
-<!-- LOGIN PAGE -->
 <div class="login-page">
   <div class="login-box">
+
+    <!-- TITLE CENTER -->
     <h2>Admin Login</h2>
 
-    <input id="username" placeholder="Username">
+    <!-- USERID -->
+    <input id="username" placeholder="User ID">
+
+    <!-- PASSWORD -->
     <input id="password" type="password" placeholder="Password">
 
-    <button onclick="login()">Login</button>
+    <!-- SUBMIT BUTTON -->
+    <button onclick="login()">Submit</button>
+
     <div id="errorMsg"></div>
+
   </div>
 </div>
 
 <script>
 async function login() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const errorMsg = document.getElementById("errorMsg");
 
-  if (!username || !password) {
-    errorMsg.innerText = "Username and password required";
-    return;
-  }
+const username = document.getElementById("username").value.trim();
+const password = document.getElementById("password").value.trim();
+const errorMsg = document.getElementById("errorMsg");
 
-  try {
-    const res = await fetch("/admin/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ username, password })
-    });
+if (!username || !password){
+errorMsg.innerText="User ID and Password required";
+return;
+}
 
-    const data = await res.json();
+try{
 
-    if (res.ok && data.token) {
-      localStorage.setItem("jwt", data.token);
-      window.location.href = "admin.html"; // ✅ redirect
-    } else {
-      errorMsg.innerText = "Invalid credentials";
-    }
+const res = await fetch("/admin/login",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({username,password})
+});
 
-  } catch (err) {
-    console.error(err);
-    errorMsg.innerText = "Login failed. Try again.";
-  }
+const data = await res.json();
+
+if(res.ok && data.token){
+localStorage.setItem("jwt",data.token);
+window.location.href="admin.html";
+}else{
+errorMsg.innerText="Invalid credentials";
+}
+
+}catch(err){
+errorMsg.innerText="Login failed";
+}
+
 }
 </script>
 

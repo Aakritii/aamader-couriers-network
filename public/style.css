@@ -29,6 +29,10 @@ button {
   align-items: center;
 }
 
+.topbar button:hover{
+  background:#bfc0c2;
+}
+
 .logo {
   font-size: 26px;
   font-weight: bold;
@@ -65,6 +69,10 @@ button {
   color: white;
   border: none;
   border-radius: 16px;
+}
+
+.submit-btn:hover{
+  background:#162d66;
 }
 
 /* ================= OVERLAY ================= */
@@ -106,6 +114,10 @@ button {
   background: #3a8cc1;
   color: white;
   border-radius: 18px;
+}
+
+.close-btn:hover{
+  background:#162d66;
 }
 
 #trackStatus {
@@ -150,6 +162,60 @@ button {
   border: none;
   border-radius: 20px;
   font-size: 16px;
+}
+
+.login-page{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:80vh;
+}
+
+.login-box input{
+  width:100%;
+  padding:12px;
+  margin-bottom:15px;
+  border:1px solid #ccc;
+  border-radius:5px;
+  font-size:14px;
+}
+
+.login-box button{
+  width:100%;
+  padding:12px;
+  background:#3a8cc1;
+  color:white;
+  border:none;
+  border-radius:5px;
+  font-size:16px;
+  cursor:pointer;
+}
+
+.login-box button:hover{
+  background:#162d66;
+}
+
+.login-field {
+  width: 200px;
+  padding: 12px;
+  border-radius: 20px;
+  border: absolute;
+  background: #f3f0f0;
+  text-align: center;
+}
+
+.login-box input{
+  width:100%;
+  padding:12px;
+  margin-bottom:15px;
+  border:1px solid #ccc;
+  border-radius:5px;
+  font-size:14px;
+}
+
+#errorMsg{
+  color:red;
+  margin-top:10px;
 }
 
 /* ================= ADMIN DASHBOARD ================= */

@@ -239,7 +239,7 @@ function searchParcel() {
         <tr>
           <td>${data.trackingNumber}</td>
           <td>${data.status}</td>
-          <td>-</td>
+          <td>${formatDate(data.createdAt)}</td>
           <td>${formatDate(data.updatedAt)}</td>
           <td>
             <select id="s_${tn}">
