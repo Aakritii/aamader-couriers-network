@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Login | Aamader Courier Networks</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="logo" onclick="location.href='index.html'">
+    Aamader Courier Networks
+  </div>
+  <button class="login-btn" onclick="location.href='index.html'">
+    Tracking
+  </button>
+</div>
+
+<div class="login-page">
+  <div class="login-box">
+
+    <!-- TITLE CENTER -->
+    <h2>Admin Login</h2>
+
+    <!-- USERID -->
+    <input id="username" placeholder="User ID">
+
+    <!-- PASSWORD -->
+    <input id="password" type="password" placeholder="Password">
+
+    <!-- SUBMIT BUTTON -->
+    <button onclick="login()">Submit</button>
+
+    <div id="errorMsg"></div>
+
+  </div>
+</div>
+
+<script>
+async function login() {
+
+const username = document.getElementById("username").value.trim();
+const password = document.getElementById("password").value.trim();
+const errorMsg = document.getElementById("errorMsg");
+
+if (!username || !password){
+errorMsg.innerText="User ID and Password required";
+return;
+}
+
+try{
+
+const res = await fetch("/admin/login",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({username,password})
+});
+
+const data = await res.json();
+
+if(res.ok && data.token){
+localStorage.setItem("jwt",data.token);
+window.location.href="admin.html";
+}else{
+errorMsg.innerText="Invalid credentials";
+}
+
+}catch(err){
+errorMsg.innerText="Login failed";
+}
+
+}
+</script>
+
+</body>
+</html>
